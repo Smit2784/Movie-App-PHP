@@ -124,6 +124,11 @@ $movies = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <i class="fas fa-envelope group-hover:scale-110 transition-transform duration-300"></i>
                         <span>Contact Us</span>
                     </a>
+                    <a href="mybookings.php"
+                        class="text-white/80 hover:text-white font-medium transition-colors duration-300 flex items-center space-x-2 group">
+                        <i class="fas fa-calendar-check group-hover:scale-110 transition-transform duration-300"></i>
+                        <span>My Bookings</span>
+                    </a>
                 </nav>
 
                 <!-- Auth Buttons on Right -->

@@ -262,54 +262,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
 
-    <script>
-        function showSignIn() {
-            document.getElementById('signinForm').classList.remove('hidden');
-            document.getElementById('signupForm').classList.add('hidden');
-            
-            document.getElementById('signinTab').className = 'flex-1 py-4 px-6 font-medium transition-all duration-300 bg-white text-gray-800';
-            document.getElementById('signupTab').className = 'flex-1 py-4 px-6 font-medium transition-all duration-300 bg-white/20 text-white hover:bg-white/30';
+<script>
+    function showSignIn() {
+        document.getElementById('signinForm').classList.remove('hidden');
+        document.getElementById('signupForm').classList.add('hidden');
+        
+        document.getElementById('signinTab').className = 'flex-1 py-4 px-6 font-medium transition-all duration-300 bg-white text-gray-800';
+        document.getElementById('signupTab').className = 'flex-1 py-4 px-6 font-medium transition-all duration-300 bg-white/20 text-white hover:bg-white/30';
+    }
+
+    function showSignUp() {
+        document.getElementById('signinForm').classList.add('hidden');
+        document.getElementById('signupForm').classList.remove('hidden');
+        
+        document.getElementById('signinTab').className = 'flex-1 py-4 px-6 font-medium transition-all duration-300 bg-white/20 text-white hover:bg-white/30';
+        document.getElementById('signupTab').className = 'flex-1 py-4 px-6 font-medium transition-all duration-300 bg-white text-gray-800';
+    }
+
+    function togglePassword(inputId, button) {
+        const input = document.getElementById(inputId);
+        const icon = button.querySelector('i');
+        
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.className = 'fas fa-eye-slash';
+        } else {
+            input.type = 'password';
+            icon.className = 'fas fa-eye';
         }
+    }
 
-        function showSignUp() {
-            document.getElementById('signinForm').classList.add('hidden');
-            document.getElementById('signupForm').classList.remove('hidden');
-            
-            document.getElementById('signinTab').className = 'flex-1 py-4 px-6 font-medium transition-all duration-300 bg-white/20 text-white hover:bg-white/30';
-            document.getElementById('signupTab').className = 'flex-1 py-4 px-6 font-medium transition-all duration-300 bg-white text-gray-800';
+    // Password confirmation validation - FIXED VERSION
+    const signupPasswordInput = document.querySelector('#signupForm input[name="password"]');
+    const confirmPasswordInput = document.getElementById('confirmPassword');
+
+    function validatePasswordMatch() {
+        const password = signupPasswordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
+        
+        if (confirmPassword === '') {
+            // Don't show error if confirm password is empty
+            confirmPasswordInput.setCustomValidity('');
+            confirmPasswordInput.classList.remove('border-red-400');
+            confirmPasswordInput.classList.remove('border-green-400');
+            return;
         }
-
-        function togglePassword(inputId, button) {
-            const input = document.getElementById(inputId);
-            const icon = button.querySelector('i');
-            
-            if (input.type === 'password') {
-                input.type = 'text';
-                icon.className = 'fas fa-eye-slash';
-            } else {
-                input.type = 'password';
-                icon.className = 'fas fa-eye';
-            }
+        
+        if (password !== confirmPassword) {
+            confirmPasswordInput.setCustomValidity('Passwords do not match');
+            confirmPasswordInput.classList.add('border-red-400');
+            confirmPasswordInput.classList.remove('border-green-400');
+        } else {
+            confirmPasswordInput.setCustomValidity('');
+            confirmPasswordInput.classList.remove('border-red-400');
+            confirmPasswordInput.classList.add('border-green-400');
         }
+    }
 
-        // Password confirmation validation
-        document.getElementById("confirmPassword").addEventListener('input', function() {
-            const password = document.querySelector('input[name="password"]').value.trim();
-            const confirmPassword = this.value.trim();
-            
-            if (password !== confirmPassword) {
-                this.setCustomValidity('Passwords do not match');
-                this.classList.add('border-red-400');
-            } else {
-                this.setCustomValidity('');
-                this.classList.remove('border-red-400');
-            }
-        });
+    // Add event listeners to both password fields
+    if (signupPasswordInput && confirmPasswordInput) {
+        signupPasswordInput.addEventListener('input', validatePasswordMatch);
+        confirmPasswordInput.addEventListener('input', validatePasswordMatch);
+    }
 
-        // Show appropriate form based on URL or action
-        <?php if ($action === 'signup' || $success_message): ?>
-            showSignUp();
-        <?php endif; ?>
-    </script>
+    // Show appropriate form based on URL or action
+    <?php if ($action === 'signup' || $success_message): ?>
+        showSignUp();
+    <?php endif; ?>
+</script>
+
 </body>
 </html>

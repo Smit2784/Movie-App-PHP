@@ -135,16 +135,17 @@ if ($booking_id) {
                     </div>
 
                     <!-- Card Payment Form -->
-                    <form method="post" action="process_payment.php" id="cardForm" class="space-y-6">
+                    <form method="post" action="process_payment.php" id="paymentForm" class="space-y-6">
                         <input type="hidden" name="booking_id" value="<?= $booking_id ?>">
                         <input type="hidden" name="payment_method" id="selectedPaymentMethod" value="card">
+                        <input type="hidden" name="wallet_provider" id="selectedWallet" value="">
 
                         <div id="cardFields">
                             <div class="space-y-4">
                                 <div>
                                     <label class="block text-gray-700 font-medium mb-2">Card Number</label>
                                     <div class="relative">
-                                        <input type="text" placeholder="1234 5678 9012 3456" maxlength="19"
+                                        <input type="text" id="cardNumber" name="card_number" placeholder="1234 5678 9012 3456" maxlength="19"
                                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 pl-12"
                                                oninput="formatCardNumber(this)">
                                         <i class="fas fa-credit-card absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
@@ -154,20 +155,20 @@ if ($booking_id) {
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label class="block text-gray-700 font-medium mb-2">Expiry Date</label>
-                                        <input type="text" placeholder="MM/YY" maxlength="5"
+                                        <input type="text" id="cardExpiry" name="card_expiry" placeholder="MM/YY" maxlength="5"
                                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300"
                                                oninput="formatExpiry(this)">
                                     </div>
                                     <div>
                                         <label class="block text-gray-700 font-medium mb-2">CVV</label>
-                                        <input type="text" placeholder="123" maxlength="4"
+                                        <input type="text" id="cardCvv" name="card_cvv" placeholder="123" maxlength="4"
                                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300">
                                     </div>
                                 </div>
 
                                 <div>
                                     <label class="block text-gray-700 font-medium mb-2">Cardholder Name</label>
-                                    <input type="text" placeholder="John Doe"
+                                    <input type="text" id="cardHolder" name="card_holder" placeholder="John Doe"
                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300">
                                 </div>
                             </div>
@@ -176,7 +177,7 @@ if ($booking_id) {
                         <div id="upiFields" class="hidden">
                             <div>
                                 <label class="block text-gray-700 font-medium mb-2">UPI ID</label>
-                                <input type="text" placeholder="yourname@upi"
+                                <input type="text" id="upiId" name="upi_id" placeholder="yourname@upi"
                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300">
                             </div>
                             <div class="text-center py-8">
@@ -193,19 +194,19 @@ if ($booking_id) {
                             <div class="text-center py-8">
                                 <div class="text-gray-600 mb-6">Select your preferred wallet</div>
                                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <button type="button" class="p-4 border-2 border-gray-300 rounded-lg hover:border-purple-400 transition-colors">
+                                    <button type="button" onclick="selectWallet('Paytm', this)" class="wallet-btn p-4 border-2 border-gray-300 rounded-lg hover:border-purple-400 transition-colors">
                                         <div class="text-2xl mb-2">📱</div>
                                         <div class="text-sm font-medium">Paytm</div>
                                     </button>
-                                    <button type="button" class="p-4 border-2 border-gray-300 rounded-lg hover:border-purple-400 transition-colors">
+                                    <button type="button" onclick="selectWallet('PhonePe', this)" class="wallet-btn p-4 border-2 border-gray-300 rounded-lg hover:border-purple-400 transition-colors">
                                         <div class="text-2xl mb-2">💰</div>
                                         <div class="text-sm font-medium">PhonePe</div>
                                     </button>
-                                    <button type="button" class="p-4 border-2 border-gray-300 rounded-lg hover:border-purple-400 transition-colors">
+                                    <button type="button" onclick="selectWallet('GPay', this)" class="wallet-btn p-4 border-2 border-gray-300 rounded-lg hover:border-purple-400 transition-colors">
                                         <div class="text-2xl mb-2">🏦</div>
                                         <div class="text-sm font-medium">GPay</div>
                                     </button>
-                                    <button type="button" class="p-4 border-2 border-gray-300 rounded-lg hover:border-purple-400 transition-colors">
+                                    <button type="button" onclick="selectWallet('Freecharge', this)" class="wallet-btn p-4 border-2 border-gray-300 rounded-lg hover:border-purple-400 transition-colors">
                                         <div class="text-2xl mb-2">💸</div>
                                         <div class="text-sm font-medium">Freecharge</div>
                                     </button>
@@ -252,8 +253,11 @@ if ($booking_id) {
     </div>
 
     <script>
+        let currentPaymentMethod = 'card';
+        let selectedWalletProvider = '';
+
         function selectPaymentMethod(method) {
-            // Update selected payment method
+            currentPaymentMethod = method;
             document.getElementById('selectedPaymentMethod').value = method;
 
             // Reset all buttons
@@ -263,8 +267,8 @@ if ($booking_id) {
             });
 
             // Style selected button
-            event.target.classList.add('active', 'border-purple-500', 'bg-purple-50', 'text-purple-600');
-            event.target.classList.remove('border-gray-300');
+            event.target.closest('.payment-method-btn').classList.add('active', 'border-purple-500', 'bg-purple-50', 'text-purple-600');
+            event.target.closest('.payment-method-btn').classList.remove('border-gray-300');
 
             // Show/hide relevant fields
             document.getElementById('cardFields').classList.add('hidden');
@@ -278,6 +282,29 @@ if ($booking_id) {
             } else if (method === 'wallet') {
                 document.getElementById('walletFields').classList.remove('hidden');
             }
+
+            // Reset wallet selection
+            selectedWalletProvider = '';
+            document.getElementById('selectedWallet').value = '';
+            document.querySelectorAll('.wallet-btn').forEach(btn => {
+                btn.classList.remove('border-purple-500', 'bg-purple-50');
+                btn.classList.add('border-gray-300');
+            });
+        }
+
+        function selectWallet(provider, button) {
+            selectedWalletProvider = provider;
+            document.getElementById('selectedWallet').value = provider;
+
+            // Reset all wallet buttons
+            document.querySelectorAll('.wallet-btn').forEach(btn => {
+                btn.classList.remove('border-purple-500', 'bg-purple-50');
+                btn.classList.add('border-gray-300');
+            });
+
+            // Highlight selected wallet
+            button.classList.add('border-purple-500', 'bg-purple-50');
+            button.classList.remove('border-gray-300');
         }
 
         function formatCardNumber(input) {
@@ -294,9 +321,56 @@ if ($booking_id) {
             input.value = value;
         }
 
+        // Form validation before submit
+        document.getElementById('paymentForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            if (currentPaymentMethod === 'card') {
+                const cardNumber = document.getElementById('cardNumber').value.replace(/\s/g, '');
+                const cardExpiry = document.getElementById('cardExpiry').value;
+                const cardCvv = document.getElementById('cardCvv').value;
+                const cardHolder = document.getElementById('cardHolder').value;
+
+                if (!cardNumber || cardNumber.length < 13) {
+                    alert('Please enter a valid card number');
+                    return;
+                }
+                if (!cardExpiry || cardExpiry.length !== 5) {
+                    alert('Please enter a valid expiry date (MM/YY)');
+                    return;
+                }
+                if (!cardCvv || cardCvv.length < 3) {
+                    alert('Please enter a valid CVV');
+                    return;
+                }
+                if (!cardHolder || cardHolder.trim() === '') {
+                    alert('Please enter cardholder name');
+                    return;
+                }
+            } else if (currentPaymentMethod === 'upi') {
+                const upiId = document.getElementById('upiId').value;
+                if (!upiId || !upiId.includes('@')) {
+                    alert('Please enter a valid UPI ID');
+                    return;
+                }
+            } else if (currentPaymentMethod === 'wallet') {
+                if (!selectedWalletProvider) {
+                    alert('Please select a wallet provider');
+                    return;
+                }
+            }
+
+            // If validation passes, submit the form
+            this.submit();
+        });
+
         // Initialize with card method selected
         document.addEventListener('DOMContentLoaded', function() {
-            selectPaymentMethod('card');
+            const firstButton = document.querySelector('.payment-method-btn.active');
+            if (firstButton) {
+                firstButton.classList.add('border-purple-500', 'bg-purple-50', 'text-purple-600');
+                firstButton.classList.remove('border-gray-300');
+            }
         });
     </script>
 
