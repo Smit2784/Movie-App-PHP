@@ -1,0 +1,29 @@
+from datetime import  timedelta , date
+
+# Configuration
+start_date = date.today();
+days = 15
+show_times = ['10:00:00', '13:15:00', '16:30:00', '19:45:00', '23:00:00']
+movies = list(range(1, 20))  # movie_id from 1 to 19
+
+# Generate showtimes WITHOUT specifying ID
+showtimes = []
+for movie_id in movies:
+    for day in range(days):
+        date = start_date + timedelta(days=day)
+        for time in show_times:
+            showtimes.append((movie_id, date.strftime('%Y-%m-%d'), time, 100, 100))
+
+# Format as SQL insert statements WITHOUT ID
+sql_lines = ["INSERT INTO showtimes (movie_id, show_date, show_time, total_seats, available_seats) VALUES"]
+for i, row in enumerate(showtimes):
+    line = f"({row[0]}, '{row[1]}', '{row[2]}', {row[3]}, {row[4]})"
+    if i < len(showtimes) - 1:
+        line += ","
+    else:
+        line += ";"
+    sql_lines.append(line)
+
+# Write to file or print
+sql_script = "\n".join(sql_lines)
+print(sql_script)
