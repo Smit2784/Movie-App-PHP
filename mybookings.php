@@ -170,20 +170,46 @@ $confirmed_bookings = count(array_filter($bookings, function($b) { return $b['st
                         <i class="fas fa-home"></i>
                         <span>Home</span>
                     </a>
-                    <a href="profile.php" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg transition-all duration-300 flex items-center space-x-2">
-                        <i class="fas fa-user"></i>
-                        <span>Profile</span>
-                    </a>
                     <?php if ($_SESSION['role'] === 'admin'): ?>
                         <a href="admin_dashboard.php" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg transition-all duration-300 flex items-center space-x-2">
                             <i class="fas fa-cog"></i>
                             <span>Admin</span>
                         </a>
-                    <?php endif; ?>
-                    <a href="logout.php" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-all duration-300 flex items-center space-x-2">
-                        <i class="fas fa-sign-out-alt"></i>
-                        <span>Logout</span>
-                    </a>
+                    <?php endif; ?> 
+                        <div class="relative group">
+                            <button
+                                class="flex items-center space-x-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold px-4 py-2 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg">
+                                <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <span><?= htmlspecialchars($_SESSION['username']) ?></span>
+                                <i class="fas fa-chevron-down text-xs"></i>
+                            </button>
+
+                            <!-- Dropdown Menu -->
+                            <div
+                                class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform group-hover:translate-y-0 translate-y-2 z-50">
+                                <a href="profile.php"
+                                    class="block px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-t-lg transition-colors">
+                                    <i class="fas fa-user-circle mr-2 text-purple-500"></i>
+                                    My Profile
+                                </a>
+                                <a href="mybookings.php"
+                                    class="block px-4 py-3 text-gray-700 hover:bg-purple-50 transition-colors">
+                                    <!-- <i class="fas fa-ticket-alt mr-2 text-blue-500"></i> -->
+                                    <i
+                                        class="fas fa-calendar-check mr-2 group-hover:scale-110 transition-transform duration-300"></i>
+
+                                    My Bookings
+                                </a>
+                                <hr class="my-1">
+                                <a href="logout.php"
+                                    class="block px-4 py-3 text-red-600 hover:bg-red-50 rounded-b-lg transition-colors">
+                                    <i class="fas fa-sign-out-alt mr-2"></i>
+                                    Logout
+                                </a>
+                            </div>
+                        </div>
                 </div>
             </div>
         </div>

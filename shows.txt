@@ -1,3 +1,5 @@
+# Python Code for crate a shows for 15 days 
+
 from datetime import  timedelta , date
 
 # Configuration

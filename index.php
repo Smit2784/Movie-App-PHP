@@ -2,6 +2,21 @@
 session_start();
 require_once 'db.php';
 
+// Fetch user email if logged in
+if (isset($_SESSION['user_id'])) {
+    try {
+        $stmt = $pdo->prepare("SELECT email FROM users WHERE id = ?");
+        $stmt->execute([$_SESSION['user_id']]);
+        $user_data = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($user_data) {
+            $_SESSION['user_email'] = $user_data['email'];
+        }
+    } catch (PDOException $e) {
+        // Handle error silently
+    }
+}
+
+
 // Handle booking form submission
 $error_message = '';
 
@@ -124,40 +139,68 @@ $movies = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <i class="fas fa-envelope group-hover:scale-110 transition-transform duration-300"></i>
                         <span>Contact Us</span>
                     </a>
-                    <a href="mybookings.php"
+                    <!-- <a href="mybookings.php"
                         class="text-white/80 hover:text-white font-medium transition-colors duration-300 flex items-center space-x-2 group">
                         <i class="fas fa-calendar-check group-hover:scale-110 transition-transform duration-300"></i>
                         <span>My Bookings</span>
-                    </a>
+                    </a> -->
                 </nav>
 
                 <!-- Auth Buttons on Right -->
                 <div class="flex items-center space-x-4">
-                    <!-- Mobile Menu Button -->
-                    <button onclick="toggleMobileMenu()" class="md:hidden text-white p-2">
-                        <i class="fas fa-bars text-xl"></i>
-                    </button>
 
+                    <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+                        <a href="admin_dashboard.php"
+                            class="hidden md:flex bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 items-center space-x-2">
+                            <i class="fas fa-cog"></i>
+                            <span>Admin</span>
+                        </a>
+                    <?php endif; ?>
                     <!-- Desktop Auth Buttons -->
                     <?php if (isset($_SESSION['user_id'])): ?>
                         <span class="hidden md:flex text-white/80 items-center space-x-2">
-                            <a href="profile.php"
-                                class="bg-white/10 hover:bg-white/20 text-white font-semibold px-3 py-1 rounded-full transition-all duration-300 transform hover:scale-105">
-                                <?= htmlspecialchars($_SESSION['username']) ?>
-                            </a>
+                            <div class="relative group">
+                                <button
+                                    class="flex items-center space-x-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold px-4 py-2 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg">
+                                    <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                    <span><?= htmlspecialchars($_SESSION['username']) ?></span>
+                                    <i class="fas fa-chevron-down text-xs"></i>
+                                </button>
+
+                                <!-- Dropdown Menu -->
+                                <div
+                                    class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform group-hover:translate-y-0 translate-y-2 z-50">
+                                    <a href="profile.php"
+                                        class="block px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-t-lg transition-colors">
+                                        <i class="fas fa-user-circle mr-2 text-purple-500"></i>
+                                        My Profile
+                                    </a>
+                                    <a href="mybookings.php"
+                                        class="block px-4 py-3 text-gray-700 hover:bg-purple-50 transition-colors">
+                                        <!-- <i class="fas fa-ticket-alt mr-2 text-blue-500"></i> -->
+                                        <i
+                                            class="fas fa-calendar-check mr-2 group-hover:scale-110 transition-transform duration-300"></i>
+
+                                        My Bookings
+                                    </a>
+                                    <hr class="my-1">
+                                    <a href="logout.php"
+                                        class="block px-4 py-3 text-red-600 hover:bg-red-50 rounded-b-lg transition-colors">
+                                        <i class="fas fa-sign-out-alt mr-2"></i>
+                                        Logout
+                                    </a>
+                                </div>
+                            </div>
+
                         </span>
-                        <?php if ($_SESSION['role'] === 'admin'): ?>
-                            <a href="admin_dashboard.php"
-                                class="hidden md:flex bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 items-center space-x-2">
-                                <i class="fas fa-cog"></i>
-                                <span>Admin</span>
-                            </a>
-                        <?php endif; ?>
-                        <a href="logout.php"
+
+                        <!-- <a href="logout.php"
                             class="hidden md:flex bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 items-center space-x-2">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>Logout</span>
-                        </a>
+                        </a> -->
                     <?php else: ?>
                         <a href="auth.php"
                             class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 flex items-center space-x-2">
@@ -168,48 +211,6 @@ $movies = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </div>
             </div>
 
-            <!-- Mobile Menu (Hidden by default) -->
-            <div id="mobileMenu" class="md:hidden hidden mt-4 pb-4 border-t border-white/20 pt-4">
-                <div class="flex flex-col space-y-3">
-                    <a href="index.php"
-                        class="text-white/80 hover:text-white font-medium transition-colors duration-300 flex items-center space-x-3 p-3 rounded-lg hover:bg-white/10">
-                        <i class="fas fa-home"></i>
-                        <span>Home</span>
-                    </a>
-                    <a href="about.php"
-                        class="text-white/80 hover:text-white font-medium transition-colors duration-300 flex items-center space-x-3 p-3 rounded-lg hover:bg-white/10">
-                        <i class="fas fa-info-circle"></i>
-                        <span>About Us</span>
-                    </a>
-                    <a href="contact.php"
-                        class="text-white/80 hover:text-white font-medium transition-colors duration-300 flex items-center space-x-3 p-3 rounded-lg hover:bg-white/10">
-                        <i class="fas fa-envelope"></i>
-                        <span>Contact Us</span>
-                    </a>
-
-                    <?php if (isset($_SESSION['user_id'])): ?>
-                        <div class="border-t border-white/20 pt-3 mt-3">
-                            <a href="profile.php"
-                                class="text-white/80 hover:text-white font-medium transition-colors duration-300 flex items-center space-x-3 p-3 rounded-lg hover:bg-white/10">
-                                <i class="fas fa-user"></i>
-                                <span>Profile (<?= htmlspecialchars($_SESSION['username']) ?>)</span>
-                            </a>
-                            <?php if ($_SESSION['role'] === 'admin'): ?>
-                                <a href="admin_dashboard.php"
-                                    class="text-yellow-400 hover:text-yellow-300 font-medium transition-colors duration-300 flex items-center space-x-3 p-3 rounded-lg hover:bg-white/10">
-                                    <i class="fas fa-cog"></i>
-                                    <span>Admin Dashboard</span>
-                                </a>
-                            <?php endif; ?>
-                            <a href="logout.php"
-                                class="text-red-400 hover:text-red-300 font-medium transition-colors duration-300 flex items-center space-x-3 p-3 rounded-lg hover:bg-white/10">
-                                <i class="fas fa-sign-out-alt"></i>
-                                <span>Logout</span>
-                            </a>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            </div>
         </div>
     </header>
 
@@ -401,18 +402,65 @@ $movies = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <?php endif; ?>
 
     </main>
+
     <!-- Footer -->
-            <footer class="bg-black/20 backdrop-blur-md border-t border-white/20 py-8">
-                <div class="container mx-auto px-4 text-center">
+    <footer class="bg-black/20 backdrop-blur-md border-t border-white/20 py-8 mt-16">
+        <div class="container mx-auto px-4 ">
+            <div class="text-white/60">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-6">
+                    <!-- About Section -->
+                    <div>
+                        <h3 class="text-xl font-bold mb-3 flex items-center">
+                            <span class="text-2xl mr-2">🎬</span> MovieTix
+                        </h3>
+                        <p class="text-gray-400 text-sm">
+                            Your ultimate destination for booking movie tickets online.
+                            Experience cinema like never before.
+                        </p>
+                    </div>
+
+                    <!-- Quick Links -->
+                    <div>
+                        <h4 class="text-lg font-semibold mb-3">Quick Links</h4>
+                        <ul class="space-y-2 text-sm text-gray-400">
+                            <li><a href="index.php">Home</a></li>
+                            <li><a href="about.php">About Us</a></li>
+                            <li><a href="contact.php">Contact</a></li>
+                            <li><a href="guide.php">Booking Guide</a></li>
+                            <li>Privacy Policy</li>
+                        </ul>
+                    </div>
+
+                    <!-- Contact Info -->
+                    <div>
+                        <h4 class="text-lg font-semibold mb-3">Contact Info</h4>
+                        <ul class="space-y-2 text-sm text-gray-400">
+                            <li><i class="fas fa-envelope mr-2"></i> support@movietix.com</li>
+                            <li><i class="fas fa-phone mr-2"></i> +91 1234567890</li>
+                            <li><i class="fas fa-map-marker-alt mr-2"></i> Surat, Gujarat, India</li>
+                        </ul>
+                    </div>
                 </div>
-            </footer>
+
+                <!-- Bottom Bar -->
+                <div class="border-t border-gray-700 pt-6 text-center">
+                    <p class="text-gray-400 text-sm">
+                        &copy; <?= date('Y') ?> MovieTix. All rights reserved.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
 
     <!-- Booking Modal -->
-    <div id="bookingModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+    <div id="bookingModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden ">
+        <div class="flex items-center justify-center min-h-screen p-4 ">
+            <div
+                class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto [scrollbar-width:none]">
                 <!-- Modal Header -->
-                <div class="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6 rounded-t-2xl">
+                <div
+                    class="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6 rounded-t-2xl sticky top-0 z-10">
                     <div class="flex justify-between items-center">
                         <h2 class="text-2xl font-bold">Book Tickets</h2>
                         <button onclick="closeBookingModal()" class="text-white hover:text-gray-200 text-2xl">
@@ -422,7 +470,7 @@ $movies = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </div>
 
                 <!-- Modal Body -->
-                <form method="post" class="p-6">
+                <form method="post" id="bookingForm" class="p-6">
                     <input type="hidden" name="book_tickets" value="1">
                     <input type="hidden" name="showtime_id" id="selectedShowtimeId">
 
@@ -437,7 +485,7 @@ $movies = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                     <!-- Show Times (Today Only) -->
                     <div class="mb-6">
-                        <label class="block text-gray-700 font-medium mb-3">Select Show Time (Today):</label>
+                        <label class="block text-gray-700 font-medium mb-3">Select Show Time (Today): *</label>
                         <div id="showtimesContainer" class="grid grid-cols-2 gap-2"></div>
                     </div>
 
@@ -446,29 +494,39 @@ $movies = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <div>
                             <label class="block text-gray-700 font-medium mb-2">Full Name *</label>
                             <input type="text" name="customer_name" required
+                                value="<?= isset($_SESSION['username']) ? htmlspecialchars($_SESSION['username']) : '' ?>"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         </div>
+
                         <div>
                             <label class="block text-gray-700 font-medium mb-2">Email *</label>
-                            <input type="email" name="customer_email" required
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <input type="email" name="customer_email" required readonly
+                                value="<?= isset($_SESSION['user_email']) ? htmlspecialchars($_SESSION['user_email']) : '' ?>"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <p class="text-sm text-gray-500 mt-1">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                Using your account email
+                            </p>
                         </div>
+
                         <div>
                             <label class="block text-gray-700 font-medium mb-2">Phone *</label>
-                            <input type="tel" name="customer_phone" required
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <input type="tel" name="customer_phone" required pattern="[0-9]{10}"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="10-digit mobile number">
                         </div>
                     </div>
 
                     <!-- Seat Selection -->
                     <div class="mb-6">
-                        <label class="block text-gray-700 font-medium mb-2">Number of Tickets:</label>
+                        <label class="block text-gray-700 font-medium mb-2">Number of Tickets: *</label>
                         <div class="flex items-center space-x-4">
                             <input type="number" name="num_tickets" id="numTickets" min="1" max="10" value="1" required
                                 class="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center">
                             <button type="button" onclick="openSeatSelection()"
-                                class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg transition-colors">
-                                Select Seats
+                                class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2">
+                                <i class="fas fa-couch"></i>
+                                <span>Select Seats</span>
                             </button>
                         </div>
                         <input type="hidden" name="seat_numbers" id="selectedSeats">
@@ -476,7 +534,7 @@ $movies = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     </div>
 
                     <!-- Submit Button -->
-                    <button type="submit" id="bookTicketsBtn"
+                    <button type="button" onclick="validateAndSubmit()" id="bookTicketsBtn"
                         class="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white py-3 px-6 rounded-lg font-medium transition-all duration-300 transform hover:scale-105">
                         <i class="fas fa-credit-card mr-2"></i>Proceed to Payment
                     </button>
@@ -488,9 +546,11 @@ $movies = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <!-- Seat Selection Modal -->
     <div id="seatModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] hidden">
         <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div
+                class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto [scrollbar-width:none]">
                 <!-- Seat Modal Header -->
-                <div class="bg-gradient-to-r from-purple-500 to-pink-600 text-white p-6 rounded-t-2xl">
+                <div
+                    class="bg-gradient-to-r from-purple-500 to-pink-600 text-white p-6 rounded-t-2xl sticky top-0 z-10">
                     <div class="flex justify-between items-center">
                         <h2 class="text-2xl font-bold">Select Your Seats</h2>
                         <button onclick="closeSeatModal()" class="text-white hover:text-gray-200 text-2xl">
@@ -535,7 +595,7 @@ $movies = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <!-- Confirm Button -->
                     <button onclick="confirmSeatSelection()"
                         class="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white py-3 px-6 rounded-lg font-medium transition-all duration-300">
-                        Confirm Seat Selection
+                        <i class="fas fa-check-circle mr-2"></i>Confirm Seat Selection
                     </button>
                 </div>
             </div>
@@ -641,6 +701,7 @@ $movies = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             `;
             }).join('')}
                     </div>
+                    <div class="w-6 text-center font-bold text-gray-600">${row}</div>
                 </div>
             `).join('');
         }
@@ -723,6 +784,61 @@ $movies = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 }
             });
         });
+
+        function validateAndSubmit() {
+            const numTickets = document.getElementById('numTickets').value;
+            const selectedSeats = document.getElementById('selectedSeats').value;
+            const customerName = document.querySelector('input[name="customer_name"]').value;
+            const customerEmail = document.querySelector('input[name="customer_email"]').value;
+            const customerPhone = document.querySelector('input[name="customer_phone"]').value;
+            const showtimeId = document.getElementById('selectedShowtimeId').value;
+
+            // Validate showtime selection
+            if (!showtimeId) {
+                alert('⚠️ Please select a show time!');
+                return false;
+            }
+
+            // Validate customer details
+            if (!customerName || customerName.trim() === '') {
+                alert('⚠️ Please enter your full name!');
+                return false;
+            }
+
+            if (!customerEmail || customerEmail.trim() === '') {
+                alert('⚠️ Please enter your email!');
+                return false;
+            }
+
+            if (!customerPhone || customerPhone.trim() === '') {
+                alert('⚠️ Please enter your phone number!');
+                return false;
+            }
+
+            // Validate phone number (10 digits)
+            if (!/^[0-9]{10}$/.test(customerPhone)) {
+                alert('⚠️ Please enter a valid 10-digit phone number!');
+                return false;
+            }
+
+            // Validate seat selection
+            if (!selectedSeats || selectedSeats.trim() === '') {
+                alert('🎫 Please select your seats first!\n\nClick on "Select Seats" button to choose your preferred seats.');
+                return false;
+            }
+
+            // Count selected seats
+            const selectedSeatsArray = selectedSeats.split(',').filter(seat => seat.trim() !== '');
+
+            // Validate number of tickets matches selected seats
+            if (selectedSeatsArray.length !== parseInt(numTickets)) {
+                alert(`⚠️ Please select exactly ${numTickets} seat(s)!\n\nYou have selected ${selectedSeatsArray.length} seat(s).`);
+                return false;
+            }
+
+            // If all validations pass, submit the form
+            document.querySelector('#bookingModal form').submit();
+        }
 
     </script>
 </body>
