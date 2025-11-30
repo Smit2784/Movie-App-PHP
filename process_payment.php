@@ -7,26 +7,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($booking_id) {
         try {
-            // In a real application, you would process payment here with a gateway
-            // like Stripe, PayPal, or Razorpay.
-            // For this simulation, we will just assume the payment is successful.
+            // Start transaction for safety
+            $pdo->beginTransaction();
 
-            // Update the booking status from 'Pending' to 'Confirmed'
-            $stmt = $pdo->prepare("UPDATE bookings SET status = 'Confirmed' WHERE id = ?");
-            $stmt->execute([$booking_id]);
+            // Update booking status from 'Pending' to 'Confirmed'
+            $stmt = $pdo->prepare("UPDATE bookings SET status = 'Confirmed' WHERE id = ? AND status = 'Pending'");
+            $result = $stmt->execute([$booking_id]);
 
-            // Redirect to the confirmation page
-            header("Location: confirmation.php?booking_id=" . $booking_id);
-            exit();
+            if ($result) {
+                // Check if row was actually affected (prevents double confirmation)
+                $affected = $stmt->rowCount();
+                if ($affected > 0) {
+                    $pdo->commit();
+                    
+                    // Redirect to confirmation with booking ID
+                    header("Location: confirmation.php?booking_id=" . $booking_id);
+                    exit();
+                } else {
+                    // Already confirmed or invalid
+                    $pdo->rollBack();
+                    header("Location: index.php?error=already_confirmed");
+                    exit();
+                }
+            } else {
+                $pdo->rollBack();
+                die("Booking confirmation failed. Please contact support.");
+            }
 
         } catch (PDOException $e) {
-            // Handle any database errors
+            $pdo->rollBack();
+            error_log("Payment processing error: " . $e->getMessage());
             die("Payment processing failed. Please try again.");
         }
+    } else {
+        header("Location: index.php?error=invalid_booking");
+        exit();
     }
+} else {
+    // Direct access
+    header("Location: index.php");
+    exit();
 }
-
-// If accessed directly or without a booking ID, redirect to homepage
-header("Location: index.php");
-exit();
 ?>

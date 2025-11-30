@@ -2,32 +2,52 @@
 session_start();
 require_once 'db.php';
 
+// Security: ensure user is logged in or has valid session
+if (!isset($_SESSION['user_id'])) {
+    header('Location: auth.php');
+    exit();
+}
+
 try {
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch(PDOException $e) {
-    die("Connection failed: " . $e->getMessage());
+    error_log('Database connection failed: ' . $e->getMessage());
+    die("Service temporarily unavailable. Please try again later.");
 }
 
 // Get booking details
-$booking_id = isset($_GET['booking_id']) ? $_GET['booking_id'] : null;
+$booking_id = isset($_GET['booking_id']) ? intval($_GET['booking_id']) : 0;
 $booking = null;
 
-if ($booking_id) {
-    $stmt = $pdo->prepare("
-        SELECT b.*, s.show_date, s.show_time, s.total_seats, s.available_seats, 
-               m.title, m.genre, m.duration, m.rating, m.image_url, m.price
-        FROM bookings b 
-        JOIN showtimes s ON b.showtime_id = s.id 
-        JOIN movies m ON s.movie_id = m.id 
-        WHERE b.id = ? AND b.status = 'Confirmed'
-    ");
-    $stmt->execute([$booking_id]);
-    $booking = $stmt->fetch(PDO::FETCH_ASSOC);
+if ($booking_id > 0) {
+    try {
+        $stmt = $pdo->prepare("
+            SELECT 
+                b.*, 
+                s.show_date, s.show_time, 
+                m.title, m.genre, m.duration, m.rating, m.image_url, m.price
+            FROM bookings b 
+            JOIN showtimes s ON b.showtime_id = s.id 
+            JOIN movies m ON s.movie_id = m.id 
+            WHERE b.id = ? AND b.status = 'Confirmed'
+            AND b.customer_email = ?
+        ");
+        $stmt->execute([$booking_id, $_SESSION['user_email'] ?? '']);
+        $booking = $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch(PDOException $e) {
+        error_log("Booking fetch error for ID $booking_id: " . $e->getMessage());
+    }
 }
 
 // Generate QR code data
-$qr_data = $booking ? "BOOKING-ID:" . $booking['id'] . "|MOVIE:" . $booking['title'] . "|DATE:" . $booking['show_date'] . "|TIME:" . $booking['show_time'] : "";
+$qr_data = $booking ? "BOOKING-ID:" . $booking['id'] . "|MOVIE:" . $booking['title'] . "|DATE:" . $booking['show_date'] . "|TIME:" . $booking['show_time'] . "|SEATS:" . $booking['seat_numbers'] : "";
 $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($qr_data);
+
+// If booking not found, redirect to mybookings with error
+if (!$booking) {
+    header('Location: mybookings.php?error=not_found');
+    exit();
+}
 ?>
 
 <!DOCTYPE html>
@@ -63,8 +83,7 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . url
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 min-h-screen">
-    <?php if ($booking): ?>
+<body class="bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 min-h-screen">
     <!-- Main Container -->
     <div class="min-h-screen py-4 px-4">
         <div class="max-w-md mx-auto">
@@ -100,32 +119,40 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . url
                     </div>
                     
                     <div class="flex space-x-4">
-                        <img src="<?= htmlspecialchars($booking['image_url']) ?>" 
-                             alt="<?= htmlspecialchars($booking['title']) ?>"
-                             class="w-20 h-28 object-cover rounded-lg shadow-lg">
+                        <?php if (!empty($booking['image_url'])): ?>
+                            <img src="<?= htmlspecialchars($booking['image_url']) ?>" 
+                                 alt="<?= htmlspecialchars($booking['title']) ?>"
+                                 class="w-20 h-28 object-cover rounded-lg shadow-lg">
+                        <?php endif; ?>
                         
                         <div class="flex-1">
                             <h4 class="text-white font-bold text-lg mb-3"><?= htmlspecialchars($booking['title']) ?></h4>
                             
                             <div class="space-y-2">
-                                <div class="flex justify-between items-center">
-                                    <span class="text-gray-300 text-sm">Genre:</span>
-                                    <span class="bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-medium">
-                                        <?= htmlspecialchars($booking['genre']) ?>
-                                    </span>
-                                </div>
+                                <?php if ($booking['genre']): ?>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-gray-300 text-sm">Genre:</span>
+                                        <span class="bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-medium">
+                                            <?= htmlspecialchars($booking['genre']) ?>
+                                        </span>
+                                    </div>
+                                <?php endif; ?>
                                 
-                                <div class="flex justify-between items-center">
-                                    <span class="text-gray-300 text-sm">Duration:</span>
-                                    <span class="text-gray-100 text-sm font-medium"><?= $booking['duration'] ?> minutes</span>
-                                </div>
+                                <?php if ($booking['duration']): ?>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-gray-300 text-sm">Duration:</span>
+                                        <span class="text-gray-100 text-sm font-medium"><?= $booking['duration'] ?> minutes</span>
+                                    </div>
+                                <?php endif; ?>
                                 
-                                <div class="flex justify-between items-center">
-                                    <span class="text-gray-300 text-sm">Rating:</span>
-                                    <span class="bg-purple-500 text-white px-3 py-1 rounded-full text-xs font-bold">
-                                        <?= $booking['rating'] ?>
-                                    </span>
-                                </div>
+                                <?php if ($booking['rating']): ?>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-gray-300 text-sm">Rating:</span>
+                                        <span class="bg-purple-500 text-white px-3 py-1 rounded-full text-xs font-bold">
+                                            <?= $booking['rating'] ?>
+                                        </span>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -154,12 +181,12 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . url
                         </div>
                         
                         <div class="flex justify-between items-center">
-                            <span class="text-gray-300 text-sm">Number of Tickets:</span>
+                            <span class="text-gray-300 text-sm">Tickets:</span>
                             <span class="text-white font-medium"><?= $booking['num_tickets'] ?></span>
                         </div>
                         
                         <div class="flex justify-between items-center">
-                            <span class="text-gray-300 text-sm">Seat Numbers:</span>
+                            <span class="text-gray-300 text-sm">Seats:</span>
                             <span class="bg-indigo-500 text-white px-3 py-1 rounded-full text-sm font-bold">
                                 <?= htmlspecialchars($booking['seat_numbers']) ?>
                             </span>
@@ -187,12 +214,12 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . url
                         
                         <div class="flex justify-between items-center">
                             <span class="text-gray-300 text-sm">Phone:</span>
-                            <span class="text-gray-100 text-sm"><?= htmlspecialchars($booking['customer_phone']) ?></span>
+                            <span class="text-gray-100 text-sm">+91 <?= htmlspecialchars($booking['customer_phone']) ?></span>
                         </div>
                         
                         <div class="flex justify-between items-center">
-                            <span class="text-gray-300 text-sm">Booking Date:</span>
-                            <span class="text-gray-100 text-sm"><?= date('M j, Y g:i A', strtotime($booking['created_at'] ?? 'now')) ?></span>
+                            <span class="text-gray-300 text-sm">Booking Time:</span>
+                            <span class="text-gray-100 text-sm"><?= date('M j, Y \a\t g:i A', strtotime($booking['booking_date'])) ?></span>
                         </div>
                     </div>
                 </div>
@@ -207,8 +234,9 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . url
                     <div class="bg-gray-700 rounded-lg p-4 border-l-4 border-green-400">
                         <div class="flex justify-between items-center">
                             <span class="text-white font-semibold">Total Amount Paid:</span>
-                            <span class="text-green-400 font-bold text-xl">₹<?= number_format($booking['total_amount']) ?>.00</span>
+                            <span class="text-green-400 font-bold text-xl">₹<?= number_format($booking['total_amount'], 2) ?></span>
                         </div>
+                        <p class="text-gray-300 text-sm mt-2">Payment successful via <?= $_POST['payment_method'] ?? 'Card' ?></p>
                     </div>
                 </div>
 
@@ -239,7 +267,7 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . url
                         <li>Present this confirmation or QR code at the theater</li>
                         <li>No cancellations or refunds 2 hours before showtime</li>
                         <li>Outside food and beverages are not permitted</li>
-                        <li>For any queries, contact support at support@MovieTix.com</li>
+                        <li>For any queries, contact support at support@movietix.com</li>
                     </ul>
                 </div>
             </div>
@@ -252,11 +280,11 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . url
                     <span>Print Ticket</span>
                 </button>
                 
-                <button onclick="shareTicket()" 
-                        class="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-4 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center justify-center space-x-2">
-                    <i class="fas fa-share-alt"></i>
-                    <span>Share Ticket</span>
-                </button>
+                <a href="mybookings.php"
+                   class="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-4 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center justify-center space-x-2">
+                    <i class="fas fa-ticket-alt"></i>
+                    <span>Go to My Bookings</span>
+                </a>
                 
                 <a href="index.php" 
                    class="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-bold py-4 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center justify-center space-x-2">
@@ -267,24 +295,34 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . url
 
             <!-- Footer -->
             <div class="text-center mt-8 animate-fade-in">
-                <p class="text-white/60 text-sm">Thank you for choosing MovieTix! 🍿</p>
+                <p class="text-white/60 text-sm">Thank you for choosing MovieTix! 🎬</p>
             </div>
         </div>
     </div>
 
-    <?php else: ?>
-    <!-- No Booking Found -->
-    <div class="min-h-screen flex items-center justify-center px-4">
-        <div class="text-center">
-            <div class="text-6xl text-white/50 mb-4">🎫</div>
-            <h1 class="text-2xl font-bold text-white mb-4">Booking Not Found</h1>
-            <p class="text-white/70 mb-6">The booking you're looking for doesn't exist or has been cancelled.</p>
-            <a href="index.php" class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-bold transition-all duration-300 transform hover:scale-105">
-                <i class="fas fa-home mr-2"></i>Go Home
-            </a>
-        </div>
-    </div>
-    <?php endif; ?>
+    <!-- Print Styles -->
+    <style media="print">
+        body { 
+            background: white !important; 
+            color: black !important; 
+            font-size: 12pt !important;
+        }
+        .bg-gradient-to-br { background: white !important; }
+        .bg-white\\/10, .bg-gray-800, .bg-gray-700, .bg-gray-900 { background: white !important; }
+        .border-white\\/20 { border: 1px solid #ccc !important; }
+        button, a:not([href]) { display: none !important; }
+        .text-white { color: black !important; }
+        .text-white\\/80, .text-white\\/70, .text-white\\/60, .text-gray-100, .text-gray-300 { color: #666 !important; }
+        .text-green-400 { color: #059669 !important; }
+        .text-purple-300 { color: #a78bfa !important; }
+        .text-blue-300 { color: #93c5fd !important; }
+        .bg-yellow-600 { background: #fbbf24 !important; color: #92400e !important; }
+        .text-yellow-100 { color: #92400e !important; }
+        .bg-blue-500 { background: #3b82f6 !important; }
+        .bg-purple-500 { background: #a855f7 !important; }
+        .bg-indigo-500 { background: #6366f1 !important; }
+        .bg-green-500 { background: #059669 !important; }
+    </style>
 
     <script>
         function printTicket() {
@@ -295,7 +333,7 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . url
             if (navigator.share) {
                 navigator.share({
                     title: 'MovieTix Booking Confirmation',
-                    text: `My booking for <?= htmlspecialchars($booking['title'] ?? '') ?> is confirmed! Booking ID: #<?= $booking['id'] ?? '' ?>`,
+                    text: `My booking for <?= htmlspecialchars($booking['title']) ?> is confirmed! Booking ID: #<?= $booking['id'] ?>`,
                     url: window.location.href
                 });
             } else {
@@ -305,50 +343,13 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . url
             }
         }
 
-        // Add some celebration effects
-        document.addEventListener('DOMContentLoaded', function() {
-            // Create confetti effect
-            const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57'];
-            
-            for (let i = 0; i < 50; i++) {
-                setTimeout(() => {
-                    createConfetti();
-                }, i * 100);
-            }
-        });
+        // Auto scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
 
-        function createConfetti() {
-            const confetti = document.createElement('div');
-            confetti.style.cssText = `
-                position: fixed;
-                width: 10px;
-                height: 10px;
-                background: ${['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57'][Math.floor(Math.random() * 5)]};
-                left: ${Math.random() * 100}%;
-                top: -10px;
-                border-radius: 50%;
-                pointer-events: none;
-                animation: fall 3s linear forwards;
-                z-index: 1000;
-            `;
-            
-            document.body.appendChild(confetti);
-            
-            setTimeout(() => {
-                confetti.remove();
-            }, 3000);
-        }
-
-        // Add CSS for confetti animation
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes fall {
-                to {
-                    transform: translateY(100vh) rotate(360deg);
-                }
-            }
-        `;
-        document.head.appendChild(style);
+        // Auto-hide success page after 30 seconds
+        setTimeout(() => {
+            window.location.href = 'mybookings.php';
+        }, 30000);
     </script>
 </body>
 </html>

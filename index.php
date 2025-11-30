@@ -381,7 +381,7 @@ $movies = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                             <!-- Book Now Button -->
                             <button
-                                onclick="openBookingModal(<?= $movie['id'] ?>, '<?= htmlspecialchars(addslashes($movie['title'])) ?>', '<?= htmlspecialchars($movie['image_url']) ?>', <?= $movie['price'] ?>)"
+                                onclick="checkLoginAndBook(<?= $movie['id'] ?>, '<?= htmlspecialchars($movie['title']) ?>', '<?= htmlspecialchars($movie['image_url']) ?>')" 
                                 class="w-full mt-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white py-3 px-4 rounded-xl font-bold transition-all duration-300 transform hover:scale-105 shadow-lg">
                                 <i class="fas fa-video mr-2"></i>Book Now
                             </button>
@@ -511,9 +511,9 @@ $movies = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                         <div>
                             <label class="block text-gray-700 font-medium mb-2">Phone *</label>
-                            <input type="tel" name="customer_phone" required pattern="[0-9]{10}"
+                            <input type="tel" name="customer_phone" required pattern="[0-9]{10} " maxlength="10"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                placeholder="10-digit mobile number">
+                                placeholder="10-digit mobile number" oninput="FormatNumber(this);clearPhoneError();">
                         </div>
                     </div>
 
@@ -522,7 +522,8 @@ $movies = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <label class="block text-gray-700 font-medium mb-2">Number of Tickets: *</label>
                         <div class="flex items-center space-x-4">
                             <input type="number" name="num_tickets" id="numTickets" min="1" max="10" value="1" required
-                                class="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center">
+                                class="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center"
+                                oninput="validateTickets(this)">
                             <button type="button" onclick="openSeatSelection()"
                                 class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2">
                                 <i class="fas fa-couch"></i>
@@ -643,6 +644,19 @@ $movies = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     }
                 });
         }
+
+        function checkLoginAndBook(movieId, movieTitle, movieImage) {
+            <?php if (isset($_SESSION['user_id'])): ?>
+                // User is logged in - open booking modal
+                openBookingModal(movieId, movieTitle, movieImage);
+            <?php else: ?>
+                // User not logged in - show alert and redirect
+                if (confirm('You need to sign in to book tickets. Would you like to sign in now?')) {
+                    window.location.href = 'auth.php';
+                }
+            <?php endif; ?>
+        }
+
 
         function selectShowtime(showtimeId, time, availableSeats, button) {
             // Remove selection from all showtime buttons
@@ -785,7 +799,36 @@ $movies = $stmt->fetchAll(PDO::FETCH_ASSOC);
             });
         });
 
+        function FormatNumber(input) {
+            let value = input.value.replace(/\D/g, '');
+            input.value = value;
+        }
+
+        validateTickets = (input) => {
+            let val = parseInt(input.value, 10);
+
+            if (isNaN(val)) {
+                input.value = '';
+                return;
+            }
+
+            if (val < 1) {
+                input.value = 1;
+            } else if (val > 10) {
+                alert("⚠️ You can only book up to 10 seats at a time.");
+                input.value = 10;
+            }
+        }
+
         function validateAndSubmit() {
+            const btn = document.getElementById('bookTicketsBtn');
+            const form = document.querySelector('#bookingModal form');
+
+            // prevent double click
+            if (btn.dataset.submitting === '1') {
+                return;
+            }
+
             const numTickets = document.getElementById('numTickets').value;
             const selectedSeats = document.getElementById('selectedSeats').value;
             const customerName = document.querySelector('input[name="customer_name"]').value;
@@ -821,6 +864,11 @@ $movies = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 return false;
             }
 
+            if (/^(\d)\1{9}$/.test(customerPhone)) {
+                alert('⚠️ Please enter a realistic phone number (not all same digits)!');
+                return false;
+            }
+
             // Validate seat selection
             if (!selectedSeats || selectedSeats.trim() === '') {
                 alert('🎫 Please select your seats first!\n\nClick on "Select Seats" button to choose your preferred seats.');
@@ -836,8 +884,13 @@ $movies = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 return false;
             }
 
-            // If all validations pass, submit the form
-            document.querySelector('#bookingModal form').submit();
+            // If all validations pass, submit the form    
+            btn.dataset.submitting = '1';
+            btn.disabled = true;
+            btn.classList.add('opacity-70', 'cursor-not-allowed');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+
+            form.submit();
         }
 
     </script>
