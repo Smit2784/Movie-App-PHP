@@ -409,7 +409,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_message'])) {
                             <li><a href="index.php">Home</a></li>
                             <li><a href="about.php">About Us</a></li>
                             <li><a href="contact.php">Contact</a></li>
-                            <li>Terms & Conditions</li>
+                            <li><a href="guide.php">Booking Guide</a></li>
                             <li>Privacy Policy</li>
                         </ul>
                     </div>

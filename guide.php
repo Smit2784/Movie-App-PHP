@@ -121,7 +121,7 @@ session_start();
     <!-- Main -->
     <main class="container mx-auto px-4 py-8">
         <div
-            class="max-w-3xl mx-auto bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-2xl p-6 md:p-8 animate-fade-in">
+            class="max-w-3xl mx-auto bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-2xl p-6 md:p-8 mt-[60px] animate-fade-in">
             <!-- Step indicators -->
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-lg md:text-2xl font-bold">How to book tickets</h2>
@@ -243,7 +243,7 @@ session_start();
     </main>
 
     <!-- Footer -->
-    <footer class="bg-gray-900 text-white py-4 mt-16">
+    <footer class="bg-gray-900 text-white py-4 mt-[40px]">
         <div class="container mx-auto px-4 text-center">
             <p class="text-gray-400 text-sm">
                 &copy; <?= date('Y') ?> MovieTix - Online Movie Ticket Booking Platform
